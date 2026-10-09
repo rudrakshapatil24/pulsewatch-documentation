@@ -1,0 +1,416 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><title>PulseWatch Documentation</title><style>
+body{font-family:Calibri,Arial,sans-serif;max-width:920px;margin:40px auto;padding:0 20px;color:#0f172a;line-height:1.55}
+h1{font-family:Georgia,serif;color:#0a1224;border-bottom:3px solid #2dd4bf;padding-bottom:8px}
+h2{font-family:Georgia,serif;color:#0a1224;margin-top:36px;border-bottom:1px solid #cbd5e1;padding-bottom:4px}
+h3{color:#0f766e}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}
+th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top}
+th{background:#e2e8f0}
+pre{background:#0a1224;color:#e2e8f0;padding:14px;border-radius:6px;overflow-x:auto;font-size:13px}
+code{font-family:Consolas,monospace;font-size:13px}
+blockquote{border-left:4px solid #fbbf24;background:#fef9c3;margin:12px 0;padding:8px 14px}
+</style></head><body><h1>PulseWatch: Early Health Outbreak Detection &amp; Alerts</h1>
+<p><strong>CodeAstra 2.0 | Domain: Web &amp; Product Development | Problem statement: Health Outbreak Detection &amp; Alert System</strong>
+Team ID: [Team ID] | Team name: [Team name] | Leader: [Leader name]</p>
+<blockquote>
+<p><strong>All data in this prototype is SIMULATED sample data.</strong> It is a demonstration of the workflow and the explainable risk logic. It is not real public-health intelligence and must not be used for health decisions.</p>
+</blockquote>
+<hr />
+<h2>1. Overview and problem statement</h2>
+<p>Official outbreak reports in India, such as IDSP weekly district summaries, arrive late. Clinic counts, news reports, search trends and weather data sit in separate systems, so small clusters are often noticed only after they spread. Simple threshold alerts give a number but no reason, and frequent false alarms teach people to ignore them.</p>
+<p>PulseWatch shows an early-warning approach for districts. It combines four signals into a per-district risk level of <strong>Normal, Watch or Alert</strong>, compares each district with its own historical baseline, and explains every alert in plain language. Officers can acknowledge, resolve and review alerts.</p>
+<h2>2. Objectives</h2>
+<ul>
+<li>Combine several weak signals into one transparent district risk score.</li>
+<li>Make every alert explainable: reasons, baseline comparison, contributing sources, confidence, and a suggested next step.</li>
+<li>Keep a human in the loop: officers review and record verdicts.</li>
+<li>Run fully offline with no paid services, API keys or backend.</li>
+<li>Be honest about what is simulated, what is implemented, and what is future scope.</li>
+</ul>
+<h2>3. Status: implemented, simulated, and future scope</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dashboard with KPIs, top signals, data-source labels</td>
+<td>Implemented (simulated data)</td>
+</tr>
+<tr>
+<td>District risk map (schematic, not geographic)</td>
+<td>Implemented (simulated data)</td>
+</tr>
+<tr>
+<td>Searchable district list with level filter and score breakdown</td>
+<td>Implemented (simulated data)</td>
+</tr>
+<tr>
+<td>Multi-signal risk score with guard rule and worked example</td>
+<td>Implemented (rule-based, not ML)</td>
+</tr>
+<tr>
+<td>Plain-language explanations, confidence, next action</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Alert list with acknowledge, resolve, history and filters</td>
+<td>Implemented (in-memory)</td>
+</tr>
+<tr>
+<td>Analytics: cases vs baseline, scores by district</td>
+<td>Implemented (simulated data)</td>
+</tr>
+<tr>
+<td>Officer review with verdicts and review log</td>
+<td>Implemented (in-memory; does not retune thresholds)</td>
+</tr>
+<tr>
+<td>Responsive layout, checked at 390 px width</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Reset demo data</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td>Live IDSP, news RSS, Open-Meteo, Google Trends feeds</td>
+<td><strong>Not implemented</strong> (future scope)</td>
+</tr>
+<tr>
+<td>SMS, email, web push alerts</td>
+<td><strong>Not implemented</strong> (future scope)</td>
+</tr>
+<tr>
+<td>Hindi and Marathi interface and alerts</td>
+<td><strong>Not implemented</strong> (future scope)</td>
+</tr>
+<tr>
+<td>Machine-learning models (Isolation Forest, SHAP, spaCy)</td>
+<td><strong>Not implemented.</strong> The reference design mentions these; this prototype does not use them</td>
+</tr>
+<tr>
+<td>Database, authentication, user roles</td>
+<td><strong>Not implemented</strong></td>
+</tr>
+<tr>
+<td>Leaflet map with real tiles and district boundaries</td>
+<td><strong>Not implemented</strong> (schematic SVG used so the demo works offline)</td>
+</tr>
+<tr>
+<td>Forecasting (SEIR or similar)</td>
+<td><strong>Not implemented</strong></td>
+</tr>
+</tbody>
+</table>
+<h2>4. Technology stack</h2>
+<ul>
+<li><strong>Frontend:</strong> React 18.3, Vite 5, Tailwind CSS 3, Recharts 2</li>
+<li><strong>Detection engine:</strong> plain JavaScript (ES modules), no ML libraries</li>
+<li><strong>Tests:</strong> Node.js built-in test runner (<code>node --test</code>)</li>
+<li><strong>Browser smoke test:</strong> Playwright-core (optional, see section 12)</li>
+<li><strong>Data:</strong> static JSON files generated by a seeded script</li>
+</ul>
+<h2>5. Architecture</h2>
+<pre><code>+--------------------------------------------------------------+
+| 1. DATA (SIMULATED)   data/*.json                            |
+|    districts | clinicCounts | newsSignals | searchTrends |   |
+|    weather   (produced by scripts/generateSampleData.js)     |
++------------------------------+-------------------------------+
+                               | imported as plain objects
++------------------------------v-------------------------------+
+| 2. DETECTION ENGINE (pure JS, no UI, unit-tested)           |
+|    normalize.js  -&gt; 0-100 indices from baseline ratios       |
+|    score.js      -&gt; weighted score, thresholds, guard rule   |
+|    explain.js    -&gt; plain-language reasons and confidence    |
+|    alerts.js     -&gt; open -&gt; acknowledged -&gt; resolved         |
++------------------------------+-------------------------------+
+                               | function calls at load time
++------------------------------v-------------------------------+
+| 3. UI (React + Vite)                                         |
+|    src/data.js   loads data, runs engine once per district   |
+|    src/store.jsx in-memory state (alerts, reviews) via reducer|
+|    src/pages/*   Dashboard, Map, Districts, Alerts,          |
+|                  Analytics, Review, Method                   |
++------------------------------+-------------------------------+
+                               | officer verdicts (in memory)
++------------------------------v-------------------------------+
+| 4. FEEDBACK LOG   recorded verdicts only; not used to retune |
++--------------------------------------------------------------+
+</code></pre>
+<p><strong>How components communicate.</strong> There is no network layer. <code>src/data.js</code> imports the JSON files and the engine, then builds one assessment per district. React components read that data and dispatch actions to a reducer in <code>src/store.jsx</code>. The reducer calls the engine's alert transition function, so invalid moves (for example, resolving twice) are rejected in one place. Nothing leaves the browser, so no secrets or API keys are needed.</p>
+<h2>6. System workflow: Collect → Detect → Explain → Alert → Improve</h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Prototype behaviour</th>
+<th>Real-world intent (not built)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Collect</td>
+<td>Loads seeded sample files</td>
+<td>Pull clinic returns, news, search and weather daily</td>
+</tr>
+<tr>
+<td>Detect</td>
+<td>Converts each signal to an index against the district baseline</td>
+<td>Same, with validated thresholds</td>
+</tr>
+<tr>
+<td>Explain</td>
+<td>Writes reasons, baseline comparison and confidence</td>
+<td>Same, with source links</td>
+</tr>
+<tr>
+<td>Alert</td>
+<td>Creates Watch or Alert records, which officers manage</td>
+<td>Send to officers first, then to the public after approval</td>
+</tr>
+<tr>
+<td>Improve</td>
+<td>Records officer verdicts in a log</td>
+<td>Use verdicts to tune thresholds, with audit trail</td>
+</tr>
+</tbody>
+</table>
+<h2>7. Folder structure</h2>
+<pre><code>pulsewatch/
+├── README.md
+├── package.json
+├── vite.config.js, tailwind.config.js, postcss.config.js, index.html
+├── data/                       SIMULATED JSON (generated, seeded)
+│   ├── districts.json          district list with coordinates and baseline size
+│   ├── clinicCounts.json       12 weekly case counts per district
+│   ├── newsSignals.json        placeholder news items (last 7 days)
+│   ├── searchTrends.json       12 weekly search index values per district
+│   ├── weather.json            3-day rainfall per district
+│   └── feedback.json           empty by default; reserved for review records
+├── engine/                     detection logic, no UI code
+│   ├── normalize.js            baselines, ratios and 0-100 index scales
+│   ├── score.js                weights, thresholds, guard rule, assessDistrict
+│   ├── explain.js              plain-language reasons and confidence
+│   ├── alerts.js               alert lifecycle
+│   └── __tests__/score.test.js unit tests
+├── scripts/
+│   └── generateSampleData.js   seeded generator (run: npm run data)
+├── src/
+│   ├── main.jsx, App.jsx       entry point and navigation shell
+│   ├── data.js                 loads data and runs the engine
+│   ├── store.jsx               reducer-based in-memory state
+│   ├── components/ui.jsx       shared cards, badges and labels
+│   └── pages/                  Dashboard, MapView, Districts, Alerts,
+│                               Analytics, Review, Method
+├── e2e/smoke.mjs              browser smoke test (optional)
+├── screenshots/                real screenshots from the running app
+└── deck/                       PowerPoint deck and build script
+</code></pre>
+<h2>8. Installation and running</h2>
+<p>Requirements: Node.js 18 or later (tested on Node 22), npm.</p>
+<pre><code class="language-bash">cd pulsewatch
+npm install            # installs React, Vite, Tailwind, Recharts
+npm run data           # optional: regenerate the seeded sample data
+npm test               # run the 7 unit tests
+npm run dev            # start the app at http://localhost:5173
+</code></pre>
+<p>For a production build:</p>
+<pre><code class="language-bash">npm run build &amp;&amp; npm run preview     # serves the build at http://localhost:4173
+</code></pre>
+<p>No environment variables, API keys or external services are required.</p>
+<h2>9. Data schema and sample data</h2>
+<p>Every file has the same wrapper so it cannot be mistaken for real data:</p>
+<pre><code class="language-json">{
+  &quot;meta&quot;: {
+    &quot;simulated&quot;: true,
+    &quot;seed&quot;: 2026,
+    &quot;generatedBy&quot;: &quot;scripts/generateSampleData.js&quot;,
+    &quot;note&quot;: &quot;Synthetic data for demonstration only. Not real public-health intelligence.&quot;
+  },
+  &quot;data&quot;: { }
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th><code>data</code> shape</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>districts.json</code></td>
+<td>array of <code>{id, name, state, lat, lng, baselineWeekly}</code></td>
+<td><code>{"id":"MH-PUN","name":"Pune","state":"Maharashtra","lat":18.52,"lng":73.86,"baselineWeekly":30}</code></td>
+</tr>
+<tr>
+<td><code>clinicCounts.json</code></td>
+<td><code>{districtId: [12 weekly counts, oldest first]}</code></td>
+<td><code>"MH-PUN": [29, 31, ..., 45]</code></td>
+</tr>
+<tr>
+<td><code>newsSignals.json</code></td>
+<td><code>{districtId: [{daysAgo, text}]}</code></td>
+<td><code>{"daysAgo":0,"text":"[SIMULATED] Local report of several people with fever in the area"}</code></td>
+</tr>
+<tr>
+<td><code>searchTrends.json</code></td>
+<td><code>{districtId: [12 relative search values]}</code></td>
+<td><code>"KA-BLR-URB": [100, 98, ..., 180]</code></td>
+</tr>
+<tr>
+<td><code>weather.json</code></td>
+<td><code>{districtId: {rainfallMm3d, note}}</code></td>
+<td><code>{"rainfallMm3d": 124, "note": "SIMULATED"}</code></td>
+</tr>
+<tr>
+<td><code>feedback.json</code></td>
+<td>array of review records (empty by default)</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>The generator creates 12 districts across 7 states. Five districts have scripted profiles: two outbreak surges, three moderate rises. The rest show normal activity. Each run with seed 2026 produces identical files.</p>
+<h2>10. Risk-scoring methodology</h2>
+<p>This is a <strong>transparent rule-based score</strong>. It is not a trained machine-learning model, and its weights and calibration points have not been validated against outbreak history.</p>
+<p><strong>Step 1: baseline.</strong> The baseline for a signal is the average of the 8 weeks before the current week. The ratio is the current week divided by that baseline.</p>
+<p><strong>Step 2: indices (0 to 100).</strong> Each signal is converted using a fixed scale:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Weight</th>
+<th>Index rule</th>
+<th>Calibration point</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Clinic cases</td>
+<td>0.40</td>
+<td>(ratio − 1) / 2.5 × 100, floored at 0</td>
+<td>3× baseline → 80</td>
+</tr>
+<tr>
+<td>News reports</td>
+<td>0.20</td>
+<td>count / 4 × 100, capped at 100</td>
+<td>2 reports → 50</td>
+</tr>
+<tr>
+<td>Search trend</td>
+<td>0.20</td>
+<td>(ratio − 1) × 100, floored at 0</td>
+<td>1.6× baseline → 60</td>
+</tr>
+<tr>
+<td>Weather</td>
+<td>0.20</td>
+<td>rainfall mm × 70 / 120, capped at 100</td>
+<td>120 mm in 3 days → 70</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 3: weighted score.</strong> <code>score = round(0.40·clinic + 0.20·news + 0.20·search + 0.20·weather)</code></p>
+<p><strong>Step 4: level.</strong> Normal below 40, Watch from 40 to 69, Alert at 70 or above.</p>
+<p><strong>Step 5: guard rule.</strong> A source <em>contributes</em> if its index is 40 or more. If the level would be Alert but fewer than two sources contribute, the level is capped at Watch and the reason is shown.</p>
+<p><strong>Worked example</strong> (also used in the unit tests):</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Index</th>
+<th>Weight</th>
+<th>Contribution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Clinic</td>
+<td>80</td>
+<td>0.40</td>
+<td>32.0</td>
+</tr>
+<tr>
+<td>News</td>
+<td>50</td>
+<td>0.20</td>
+<td>10.0</td>
+</tr>
+<tr>
+<td>Search</td>
+<td>60</td>
+<td>0.20</td>
+<td>12.0</td>
+</tr>
+<tr>
+<td>Weather</td>
+<td>70</td>
+<td>0.20</td>
+<td>14.0</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td></td>
+<td></td>
+<td><strong>68 → Watch</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Limitations of the method.</strong> A single source can contribute at most 40 points (clinic at 100 × 0.40), so with these weights the guard rule rarely changes an outcome. It is a safety net that becomes meaningful only if weights change. The unit tests exercise it with custom weights. The sample data results are: Mumbai Suburban 83 (Alert), Bengaluru Urban 74 (Alert), Chennai 49 (Watch), Pune 43 (Watch), Ahmedabad 36 (Normal, just below the Watch threshold).</p>
+<h2>11. API endpoints</h2>
+<p>There is no HTTP API. The engine runs in the browser as plain functions. If a backend is added later, the natural endpoints would be <code>GET /districts</code>, <code>GET /alerts</code>, <code>POST /alerts/{id}/transition</code> and <code>POST /reviews</code>. None of these exist today.</p>
+<h2>12. Testing</h2>
+<p><strong>Unit tests</strong> (<code>npm test</code>): 7 tests cover the worked example, threshold boundaries (39/40/69/70), the guard rule with custom weights, the normalisation calibration points, the baseline ratio, the alert lifecycle including invalid transitions, and an end-to-end assessment and explanation for a surge profile. Result on the last run: 7 pass, 0 fail.</p>
+<p><strong>Browser smoke test</strong> (<code>npm run e2e</code>, requires <code>npm run preview</code> running on port 4173 and a Chromium binary): loads every page, checks navigation, map selection, district search and filters, acknowledge and resolve flows, officer review submission, analytics rendering, mobile layout overflow, and console errors. Result on the last run: 20 of 20 checks pass. Set <code>CHROME_PATH</code> to a Chromium binary and install <code>playwright-core</code> if you want to run it.</p>
+<p><strong>Manual checks:</strong> the dashboard and map were reviewed in screenshots at 1366 px width. Label collisions on the map were found and fixed during this review.</p>
+<p><strong>Not tested:</strong> real data quality, performance with thousands of districts, accessibility beyond basic keyboard use of map markers, and any browser other than Chromium.</p>
+<h2>13. Privacy, security and ethics</h2>
+<ul>
+<li><strong>No patient data.</strong> The design uses district-level aggregated counts only. The sample data contains no personal information.</li>
+<li><strong>No secrets.</strong> There are no API keys, tokens or environment variables. Nothing is sent to a server.</li>
+<li><strong>Simulated labels.</strong> Every data panel carries a SIMULATED label, and every data file sets <code>meta.simulated</code>.</li>
+<li><strong>Human review.</strong> The product intent is that officers review alerts before any public message is sent. The prototype only records their verdicts.</li>
+<li><strong>Alarm fatigue.</strong> The guard rule and explanation requirements aim to reduce false alarms. This has not been measured.</li>
+<li><strong>Regulation.</strong> Any real deployment would need review against the Digital Personal Data Protection Act, 2023, and guidance from national public-health authorities before use.</li>
+<li><strong>Not medical advice.</strong> Suggested next actions are generic operational prompts for discussion, not clinical guidance.</li>
+</ul>
+<h2>14. Future enhancements</h2>
+<ol>
+<li>Connect validated live sources (IDSP district reports, Open-Meteo rainfall, news feeds) with source-level validation.</li>
+<li>Back-test weights and thresholds against historical outbreak records before any real use.</li>
+<li>Add email, SMS and web push alerts that are sent only after officer approval.</li>
+<li>Add Hindi and Marathi interface text and alert templates.</li>
+<li>Store alerts and reviews in a database with roles and an audit trail.</li>
+<li>Use reviewer verdicts to tune thresholds, with a clear change log.</li>
+<li>Replace the schematic map with a real map and district boundaries.</li>
+<li>Evaluate statistical detectors (for example CUSUM or EARS) against the rule-based score.</li>
+</ol>
+<h2>15. Demonstrating to judges</h2>
+<ol>
+<li><strong>Open the dashboard.</strong> Point out the SIMULATED notice and the data-source labels. Say that every number is sample data.</li>
+<li><strong>Go to Districts.</strong> Select Mumbai Suburban. Walk through the score table: clinic 83 × 0.40 = 33.2, news 100 × 0.20 = 20.0, search 76 × 0.20 = 15.2, weather 72 × 0.20 = 14.4, total 82.8, shown as 83.</li>
+<li><strong>Go to Alerts.</strong> Show the reasons, the baseline comparison ("135 this week vs about 44 typical") and the confidence label. Acknowledge one alert, then resolve it, and show the history entry.</li>
+<li><strong>Go to Officer Review.</strong> Submit a "False alarm" verdict with a note. Show the review log.</li>
+<li><strong>Go to Method &amp; Sources.</strong> Show the worked example (score 68, Watch) and the limitations list. Stating the limitations openly is the strongest answer to "does this work on real data?"</li>
+<li><strong>Resize to a phone width</strong> to show the responsive layout.</li>
+<li><strong>Click "Reset demo data"</strong> to restore the seeded state between runs.</li>
+</ol>
+<h2>16. Known limitations (summary)</h2>
+<ul>
+<li>All data is simulated. There are no live integrations.</li>
+<li>The score is rule-based and its weights are not validated. It is not a machine-learning model.</li>
+<li>The guard rule rarely changes outcomes with the current weights.</li>
+<li>Officer verdicts do not change thresholds.</li>
+<li>Alerts and reviews are in memory and reset on page reload.</li>
+<li>The map is a schematic layout, not a geographic map. Two districts are nudged for legibility.</li>
+<li>No authentication, roles or audit trail.</li>
+<li>Tested on Chromium only.</li>
+</ul>
+<h2>Attribution</h2>
+<p>The project concept comes from the CodeAstra PulseWatch submission. The presentation structure was modelled on the reference submission from Team Shaktimaan; no content from that submission (phishing detection) is used here. References in the deck are listed for verification and should be checked against the original sources before citing.</p></body></html>
